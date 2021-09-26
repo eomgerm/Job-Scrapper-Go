@@ -7,6 +7,8 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"strconv"
 	"strings"
+	"os"
+	"encoding/csv"
 )
 
 var baseUrl string = "https://kr.indeed.com/jobs?q=python&limit=50"
@@ -30,9 +32,7 @@ func main(){
 		jobs = append(jobs, extractedJobs...)
 	}
 	
-	for _, v := range(jobs) {
-		fmt.Println(v)
-	}
+	writeJobs(jobs)
 }
 
 func getPages() int {
@@ -107,4 +107,25 @@ func extractJob(card *goquery.Selection) jobDetail {
 
 func cleanString(str string) string{
 	return strings.Join(strings.Fields(strings.TrimSpace(str)), " ")
+}
+
+func writeJobs(jobs []jobDetail) {
+	file, err := os.Create("jobs.csv")
+	checkErr(err)
+	
+	w := csv.NewWriter(file)
+	defer w.Flush()
+	
+	headers := []string{"ID", "Title", "Company", "Location", "Salary", "Summary"}
+	
+	wErr := w.Write(headers)
+	checkErr(wErr)
+	
+	for _, job := range jobs {
+		jobSlice := []string{"https://kr.indeed.com/%EC%B1%84%EC%9A%A9%EB%B3%B4%EA%B8%B0?jk=" + job.id, job.title, job.company, job.location, job.salary, job.summary}
+		
+		jWErr := w.Write(jobSlice)
+		checkErr(jWErr)
+	}
+	fmt.Println("Writing done, ", len(jobs), " jobs extracted.")
 }
