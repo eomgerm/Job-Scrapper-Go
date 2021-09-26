@@ -27,8 +27,13 @@ func main(){
 	fmt.Println("Total Page: " + strconv.Itoa(totalPages))
 	
 	var jobs []jobDetail
+	c := make(chan []jobDetail)
 	for i := 0; i < totalPages; i++ {
-		extractedJobs := getPage(i)
+		go getPage(i, c)
+	}
+	
+	for i := 0; i < totalPages; i++ {
+		extractJobs := <-c
 		jobs = append(jobs, extractedJobs...)
 	}
 	
@@ -65,7 +70,7 @@ func checkCode(res *http.Response) {
 	}
 }
 
-func getPage(page int) []jobDetail {
+func getPage(page int, mainC chan<- []jobDetail) {
 	pageUrl := baseUrl + "&start=" + strconv.Itoa(page * 50)
 	fmt.Println("Requesting " + pageUrl)
 	
@@ -88,10 +93,10 @@ func getPage(page int) []jobDetail {
 	
 	for i := 0; i < cards.Length(); i++ {
 		job := <-c
-		jobs := append(jobs, job)
+		jobs = append(jobs, job)
 	}
 	
-	return jobs
+	mainC <- jobs
 }
 
 func extractJob(card *goquery.Selection, c chan<- jobDetail) {
