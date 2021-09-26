@@ -78,17 +78,23 @@ func getPage(page int) []jobDetail {
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	checkErr(err)
 	
+	c := make(chan jobDetail)
+	
 	var jobs []jobDetail
-	card := doc.Find("#mosaic-provider-jobcards>a")
-	card.Each(func(i int, card *goquery.Selection){
-		job := extractJob(card)
-		jobs = append(jobs, job)
+	cards := doc.Find("#mosaic-provider-jobcards>a")
+	cards.Each(func(i int, card *goquery.Selection){
+		go extractJob(card, c)
 	})
+	
+	for i := 0; i < cards.Length(); i++ {
+		job := <-c
+		jobs := append(jobs, job)
+	}
 	
 	return jobs
 }
 
-func extractJob(card *goquery.Selection) jobDetail {
+func extractJob(card *goquery.Selection, c chan<- jobDetail) {
 	id, _ := card.Attr("data-jk")
 	id = cleanString(id)
 	title := cleanString(card.Find(".jobTitle>span").Text())
@@ -96,7 +102,7 @@ func extractJob(card *goquery.Selection) jobDetail {
 	location := cleanString(card.Find(".companyLocation").Text())
 	salary := cleanString(card.Find(".salary-snippet").Text())
 	summary := cleanString(card.Find(".job-snippet").Text())
-	return jobDetail {
+	c <- jobDetail {
 		id: id,
 		title: title,
 		company: company,
